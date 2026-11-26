@@ -1,0 +1,339 @@
+<!doctype html><html lang="tr"><head><meta charset="utf-8">
+<meta name="viewport" content="width=device-width,initial-scale=1,viewport-fit=cover">
+<title>ABD Momentum</title>
+<script src="https://telegram.org/js/telegram-web-app.js"></script>
+<style>
+:root{--bg:#0A0D13;--s1:#121722;--s2:#181F2C;--line:#232B3A;--tx:#E9EDF5;--mut:#8A94A8;--dim:#5E6779;
+--gold:#E9B949;--gold2:#F6D27A;--up:#2BD17E;--upbg:rgba(43,209,126,.12);--dn:#FF5C5C;--dnbg:rgba(255,92,92,.12);--blue:#5B9BFF;--blubg:rgba(91,155,255,.12)}
+*{box-sizing:border-box;margin:0}
+body{background:var(--bg);color:var(--tx);font:15px/1.45 -apple-system,"SF Pro Text",Inter,Roboto,sans-serif;-webkit-font-smoothing:antialiased;padding-bottom:96px}
+.num{font-variant-numeric:tabular-nums}
+header{padding:14px 16px 10px;display:flex;align-items:center;gap:10px;position:sticky;top:0;background:linear-gradient(var(--bg) 80%,transparent);z-index:5}
+.logo{width:36px;height:36px;border-radius:10px;background:linear-gradient(135deg,var(--gold2),var(--gold));display:grid;place-items:center;color:#1A1405;font-weight:800;font-size:15px}
+.ttl b{display:block;font-size:16px;letter-spacing:-.01em}.ttl span{font-size:12px;color:var(--mut)}
+.pill{margin-left:auto;font-size:12px;font-weight:600;padding:5px 10px;border-radius:99px;display:flex;align-items:center;gap:6px}
+.pill.kapali{background:var(--s2);color:var(--mut)}.pill.acik{background:var(--upbg);color:var(--up)}
+.dot{width:7px;height:7px;border-radius:50%;background:currentColor}
+.ticker{display:flex;gap:8px;overflow:hidden;padding:0 16px 12px}
+.tk{flex:none;background:var(--s1);border:1px solid var(--line);border-radius:10px;padding:7px 10px;font-size:12px}
+.tk b{font-size:13px;margin-right:6px}.tk .u{color:var(--up)}.tk .d{color:var(--dn)}
+main{padding:0 16px}
+.card{background:var(--s1);border:1px solid var(--line);border-radius:16px;padding:16px;margin-bottom:12px}
+.h{display:flex;align-items:center;justify-content:space-between;margin-bottom:12px}
+.h h2{font-size:15px;font-weight:650;letter-spacing:-.01em}.h small{font-size:12px;color:var(--mut)}
+.lbl{font-size:12px;color:var(--mut)}
+.btn{white-space:nowrap;border:0;border-radius:12px;padding:12px 16px;font-family:inherit;font-weight:650;font-size:14px;line-height:1}
+.btn.p{background:var(--gold);color:#1A1405}.btn.g{background:var(--s2);color:var(--tx);border:1px solid var(--line)}
+.row{display:flex;align-items:center;justify-content:space-between;padding:11px 0;border-top:1px solid var(--line);gap:10px}
+.row:first-child{border-top:0;padding-top:0}
+.tag{font-size:11px;font-weight:700;padding:3px 7px;border-radius:6px}
+.tag.up{background:var(--upbg);color:var(--up)}.tag.dn{background:var(--dnbg);color:var(--dn)}.tag.bl{background:var(--blubg);color:var(--blue)}.tag.gy{background:var(--s2);color:var(--mut)}
+.up{color:var(--up)}.dn{color:var(--dn)}.mut{color:var(--mut)}
+.grid2{display:grid;grid-template-columns:1fr 1fr;gap:10px}
+.stat{background:var(--s2);border-radius:12px;padding:12px}.stat b{display:block;font-size:18px;margin-top:2px}
+nav{position:fixed;bottom:0;left:0;right:0;background:rgba(14,18,26,.92);backdrop-filter:blur(14px);border-top:1px solid var(--line);display:flex;padding:8px 8px 22px}
+nav a{flex:1;display:flex;flex-direction:column;align-items:center;gap:3px;font-size:11px;font-weight:600;color:var(--dim);text-decoration:none;padding:6px 0;border-radius:12px}
+nav a.on{color:var(--gold)}nav svg{width:22px;height:22px}
+.tab{display:none}.tab.on{display:block}
+/* radar */
+.radar{width:84px;height:84px;border-radius:50%;flex:none;position:relative;background:radial-gradient(circle,rgba(233,185,73,.10) 0 30%,transparent 31%),radial-gradient(circle,transparent 0 58%,rgba(233,185,73,.25) 59% 60%,transparent 61%);border:1.5px solid rgba(233,185,73,.45)}
+.radar::after{content:"";position:absolute;inset:0;border-radius:50%;background:conic-gradient(from 20deg,rgba(233,185,73,.55),transparent 70deg)}
+.radar i{position:absolute;width:6px;height:6px;border-radius:50%;background:var(--up);box-shadow:0 0 8px var(--up);z-index:1}
+.chips{display:flex;flex-wrap:wrap;gap:6px;margin-top:12px}
+.chip{font-size:12px;padding:5px 9px;border-radius:8px;background:var(--s2);color:var(--mut);border:1px solid var(--line)}
+.opp{display:grid;grid-template-columns:1fr auto;gap:2px 10px;padding:12px 0;border-top:1px solid var(--line)}
+.opp:first-of-type{border-top:0;padding-top:0}
+.opp .s{font-weight:700;font-size:16px}.opp .n{font-size:12px;color:var(--mut)}
+.bar{height:6px;border-radius:3px;background:var(--s2);overflow:hidden;grid-column:1/3;margin-top:8px}.bar i{display:block;height:100%;background:linear-gradient(90deg,var(--gold),var(--up))}
+.warn{display:flex;gap:10px;background:rgba(233,185,73,.08);border:1px solid rgba(233,185,73,.25);border-radius:12px;padding:10px 12px;font-size:13px;color:#E8D3A0}
+/* manuel */
+.search{display:flex;gap:8px}.search input{flex:1;min-width:0;background:var(--s2);border:1px solid var(--line);border-radius:12px;padding:11px 12px;color:var(--tx);font-family:inherit;font-weight:600;font-size:15px}
+.seg{display:flex;background:var(--s2);border-radius:10px;padding:3px;margin:12px 0}
+.seg span{flex:1;text-align:center;font-size:13px;font-weight:600;padding:7px 0;border-radius:8px;color:var(--mut)}.seg .on{background:var(--s1);color:var(--tx);box-shadow:0 1px 3px rgba(0,0,0,.4)}
+.leg{display:flex;gap:12px;font-size:12px;color:var(--mut);margin-bottom:6px}.leg i{display:inline-block;width:10px;height:3px;border-radius:2px;margin-right:5px;vertical-align:middle}
+.ind{display:grid;grid-template-columns:repeat(2,1fr);gap:10px;margin-top:12px}
+.verdict{display:flex;align-items:center;gap:12px;background:var(--upbg);border:1px solid rgba(43,209,126,.3);border-radius:14px;padding:14px}
+.score{width:52px;height:52px;border-radius:50%;display:grid;place-items:center;font-weight:800;font-size:17px;background:conic-gradient(var(--up) 0 72%,var(--s2) 72% 100%);position:relative}
+.score span{position:relative;z-index:1}.score::before{content:"";position:absolute;inset:5px;border-radius:50%;background:#0F1A16}
+/* hesap */
+.hero > b{font-size:32px;font-weight:750;letter-spacing:-.02em;display:block;margin:4px 0 2px}
+.toggle{display:flex;align-items:center;justify-content:space-between;background:var(--s2);border-radius:14px;padding:14px;border:1px solid var(--line)}
+.sw{width:50px;height:30px;border-radius:99px;background:#2A3242;position:relative;flex:none}.sw::after{content:"";position:absolute;left:3px;top:3px;width:24px;height:24px;border-radius:50%;background:#fff;transition:.2s}
+.sw.on{background:var(--up)}.sw.on::after{left:23px}
+.risk{display:grid;grid-template-columns:repeat(2,1fr);gap:8px;margin-top:12px}
+.risk div{font-size:12px;color:var(--mut);background:var(--s2);border-radius:10px;padding:9px 10px}.risk b{display:block;color:var(--tx);font-size:14px}
+.empty{color:var(--mut);font-size:14px;text-align:center;padding:14px 0}
+.note{font-size:12px;color:var(--dim);text-align:center;padding:8px 8px 0;line-height:1.5}
+
+.ticker{overflow-x:auto;scrollbar-width:none}.ticker::-webkit-scrollbar{display:none}
+.search input{text-transform:uppercase}
+.sel{display:flex;gap:6px;overflow-x:auto;scrollbar-width:none;margin-top:10px}.sel::-webkit-scrollbar{display:none}
+.sel span{flex:none;font-size:12px;font-weight:600;padding:6px 10px;border-radius:8px;background:var(--s2);color:var(--mut);border:1px solid var(--line)}
+.sel span.on{color:var(--gold);border-color:rgba(233,185,73,.5)}
+details summary{list-style:none;cursor:pointer}details summary::-webkit-details-marker{display:none}
+.log{font:12px/1.55 ui-monospace,Menlo,monospace;color:var(--mut);white-space:pre-wrap;word-break:break-word;margin-top:10px}
+.mini{display:flex;align-items:center;gap:10px;padding:9px 0;border-top:1px solid var(--line)}.mini:first-child{border-top:0}
+.mini .pb{flex:1;height:5px;border-radius:3px;background:var(--s2);overflow:hidden}.mini .pb i{display:block;height:100%;background:var(--dim)}
+.sw.kilit{opacity:.9}
+</style></head><body>
+
+<header><div class="logo">US</div><div class="ttl"><b>ABD Momentum</b><span>Paper trading · Alpaca</span></div>
+<div class="pill kapali" id="pill"><span class="dot"></span><span id="pill-t">Yükleniyor</span></div></header>
+<div class="ticker num" id="ticker"></div>
+
+<main>
+<section class="tab" id="radar">
+ <div class="card">
+  <div style="display:flex;gap:16px;align-items:center">
+   <div class="radar" id="radar-anim"></div>
+   <div style="flex:1;min-width:0">
+    <span class="tag up" id="oto-tag">● OTONOM AKTİF</span>
+    <div style="font-size:17px;font-weight:650;margin-top:8px">Her 5 dakikada tarama</div>
+    <div class="lbl num" id="son-tarama">—</div>
+   </div>
+  </div>
+  <div class="chips" id="kural-chips"></div>
+  <div class="warn" id="radar-isabet" style="margin-top:12px;display:none"></div>
+  <button class="btn g" style="width:100%;margin-top:12px" onclick="yukle(true)">Yenile</button>
+ </div>
+ <div class="card"><div class="h"><h2>Fırsat hisseleri</h2><small id="firsat-say">—</small></div><div id="firsatlar"></div></div>
+ <div class="card"><details><summary class="h" style="margin:0"><h2>Tüm hisseler</h2><small>puana göre ▸</small></summary><div id="tum" style="margin-top:12px"></div></details></div>
+ <div id="bayat"></div>
+ <p class="note">Anlık veri IEX'ten gelir; IEX tüm ABD hacminin bir kısmıdır. Doğruluk testi tam piyasa verisiyle yapılır.</p>
+</section>
+
+<section class="tab" id="manuel">
+ <div class="card">
+  <div class="search"><input id="sembol" value="NVDA" autocomplete="off" enterkeyhint="go"><button class="btn p" onclick="analizEt()">Analiz et</button></div>
+  <div class="sel" id="sembol-sec"></div>
+  <div id="analiz-hata" class="empty" style="display:none"></div>
+  <div id="analiz-govde">
+   <div style="display:flex;justify-content:space-between;align-items:flex-end;margin-top:14px">
+    <div><div class="lbl" id="a-ad">—</div><div class="num" style="font-size:26px;font-weight:750" id="fiyat">—</div></div>
+    <div class="num" style="font-weight:650" id="fdeg">—</div></div>
+   <div class="seg" id="seg"><span data-tf="5" class="on">5 dk</span><span data-tf="15">15 dk</span><span data-tf="30">30 dk</span><span data-tf="60">60 dk</span></div>
+   <div class="leg"><span><i style="background:var(--blue)"></i>EMA 9</span><span><i style="background:var(--gold)"></i>EMA 21</span><span><i style="background:#B488FF"></i>EMA 50</span><span style="margin-left:auto"><b class="up">▲</b> AL <b class="dn">▼</b> SAT</span></div>
+   <svg id="chart" viewBox="0 0 340 240" style="width:100%;height:240px;display:block"></svg>
+   <div class="lbl num" id="chart-alt" style="text-align:right"></div>
+  </div>
+ </div>
+ <div id="analiz-alt">
+  <div class="card">
+   <div class="h"><h2>Sinyal doğruluğu</h2><small id="kontrol-acik">—</small></div>
+   <div class="grid2">
+    <div class="stat"><span class="lbl">Bu grafikte</span><b class="num" id="d-grafik">—</b><span class="lbl" id="d-grafik2"></span></div>
+    <div class="stat"><span class="lbl" id="d-uzun-l">1 yıllık test</span><b class="num" id="d-uzun">—</b><span class="lbl" id="d-uzun2"></span></div>
+   </div>
+   <div id="d-liste" style="margin-top:12px"></div>
+  </div>
+  <div class="verdict" id="verdict"><div class="score" id="score"><span id="puan">—</span></div><div><b id="v-baslik">—</b><div class="lbl" id="v-alt">—</div></div></div>
+  <div class="ind" id="ind"></div>
+  <div class="card" style="margin-top:12px"><div class="h"><h2>Analiz yorumu</h2><small>otomatik</small></div>
+   <div id="yorum" style="font-size:14px;line-height:1.6;color:#C9D1DF"></div></div>
+ </div>
+</section>
+
+<section class="tab" id="hesap">
+ <div class="card hero">
+  <div class="lbl">Demo hesap değeri</div><b class="num" id="h-deger">—</b>
+  <span class="num" id="h-gun">—</span>
+  <svg id="h-grafik" viewBox="0 0 300 60" preserveAspectRatio="none" style="width:100%;height:60px;margin-top:12px"></svg>
+  <div class="grid2" style="margin-top:12px">
+   <div class="stat"><span class="lbl">Kullanılabilir nakit</span><b class="num" id="h-nakit">—</b></div>
+   <div class="stat"><span class="lbl">Alım gücü</span><b class="num" id="h-alim">—</b></div>
+  </div>
+ </div>
+ <div class="card">
+  <div class="toggle"><div><b>Otomatik al-sat</b><div class="lbl" id="oto-alt">—</div></div><div class="sw kilit" id="oto-sw"></div></div>
+  <div class="risk num" id="risk"></div>
+  <div class="warn" style="margin-top:12px"><span>ℹ️</span><div>Kâr-al ve zarar-kes emirleri alımla birlikte Alpaca'ya gönderilir; bot kapalıyken de çalışır. Ayarları değiştirmek için ayar dosyasını kullan.</div></div>
+ </div>
+ <div class="card"><div class="h"><h2>Portföy</h2><small id="poz-say">—</small></div><div id="pozlar"></div></div>
+ <div class="card"><div class="h"><h2>Açık emirler</h2><small id="emir-say">—</small></div><div id="emirler"></div></div>
+ <div class="card"><div class="h"><h2>Bugünün işlemleri</h2><small id="isl-say">—</small></div><div id="islemler"></div></div>
+ <div class="card"><details><summary class="h" style="margin:0"><h2>Son çalışma kaydı</h2><small id="kayit-z">▸</small></summary><div class="log" id="kayit"></div></details></div>
+ <p class="note">Sadece paper (sanal) hesap · Gerçek para kullanılmaz</p>
+</section>
+</main>
+
+<nav>
+ <a href="#" data-t="radar"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><circle cx="12" cy="12" r="9"/><circle cx="12" cy="12" r="4"/><path d="M12 12 19 6"/></svg>Radar</a>
+ <a href="#" data-t="manuel"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><path d="M4 19V5M4 19h16"/><path d="m7 15 4-5 3 3 5-6"/></svg>Analiz</a>
+ <a href="#" data-t="hesap"><svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2"><rect x="3" y="6" width="18" height="13" rx="3"/><path d="M16 12h2M3 10h18"/></svg>Hesap</a>
+</nav>
+
+<script>
+const tg=window.Telegram&&Telegram.WebApp;
+if(tg){try{tg.ready();tg.expand();tg.setHeaderColor('#0A0D13');tg.setBackgroundColor('#0A0D13')}catch(e){}}
+const $=id=>document.getElementById(id);
+const esc=s=>String(s??'').replace(/[&<>"]/g,c=>({'&':'&amp;','<':'&lt;','>':'&gt;','"':'&quot;'}[c]));
+const tr=(v,d=2)=>Number(v).toLocaleString('tr-TR',{minimumFractionDigits:d,maximumFractionDigits:d});
+const usd=v=>'$'+tr(v);
+const sg=(v,d=2)=>(v>0?'+':v<0?'−':'')+tr(Math.abs(v),d);
+const rk=v=>v>0?'up':v<0?'dn':'mut';
+const ist=iso=>new Date(iso).toLocaleTimeString('tr-TR',{timeZone:'Europe/Istanbul',hour:'2-digit',minute:'2-digit'});
+const istTam=iso=>new Date(iso).toLocaleString('tr-TR',{timeZone:'Europe/Istanbul',day:'2-digit',month:'short',hour:'2-digit',minute:'2-digit'});
+let P=null,A=null,TF=5;
+
+function show(t){document.querySelectorAll('.tab').forEach(e=>e.classList.toggle('on',e.id===t));
+ document.querySelectorAll('nav a').forEach(a=>a.classList.toggle('on',a.dataset.t===t));
+ try{localStorage.setItem('sekme',t)}catch(e){} scrollTo(0,0)}
+document.querySelectorAll('nav a').forEach(a=>a.onclick=e=>{e.preventDefault();tg&&tg.HapticFeedback&&tg.HapticFeedback.selectionChanged();show(a.dataset.t)});
+document.querySelectorAll('#seg span').forEach(s=>s.onclick=()=>{TF=+s.dataset.tf;document.querySelectorAll('#seg span').forEach(x=>x.classList.toggle('on',x===s));analizEt()});
+$('sembol').addEventListener('keydown',e=>{if(e.key==='Enter'){e.target.blur();analizEt()}});
+
+/* ------------------------------------------------ RADAR */
+function radarCiz(){
+ const t=P.tarama||[],k=P.kurallar||{};
+ $('pill').className='pill '+(P.piyasa_acik?'acik':'kapali');
+ $('pill-t').textContent=P.piyasa_acik?'Piyasa açık':'Piyasa kapalı';
+ $('ticker').innerHTML=t.slice().sort((a,b)=>Math.abs(b['Gun%'])-Math.abs(a['Gun%'])).map(x=>
+  `<div class="tk"><b>${esc(x.Hisse)}</b>${x.Fiyat} <span class="${x['Gun%']>=0?'u':'d'}">${sg(x['Gun%'],1)}%</span></div>`).join('');
+ $('oto-tag').className='tag '+(P.otomatik?'up':'bl');
+ $('oto-tag').textContent=P.otomatik?'● OTONOM AKTİF':'● SADECE SİNYAL';
+ const dk=Math.round((Date.now()-new Date(P.guncelleme))/60000);
+ $('son-tarama').textContent=`Son tarama ${ist(P.guncelleme)} · ${dk<1?'az önce':dk+' dk önce'}`+(P.piyasa_acik?'':` · açılış ${istTam(P.sonraki_acilis)}`);
+ $('kural-chips').innerHTML=[`Hacim ≥ ${tr(k.hacim,0)}x`,`15 dk ≥ %${tr(k.yukselis,1)}`,'EMA 9 > 21','VWAP üstü','Zirve kırılımı'].map(c=>`<span class="chip">${c}</span>`).join('');
+ const dr=P.dogruluk&&P.dogruluk.radar;
+ if(dr&&dr.isabet!=null){$('radar-isabet').style.display='flex';
+  $('radar-isabet').innerHTML=`<span>🎯</span><div><b>AL sinyalinin 1 yıllık isabeti: %${tr(dr.isabet,0)}</b> (${tr(dr.adet,0)} sinyal, 30 dk sonra ortalama ${sg(dr.ort,2)}%). ${dr.isabet<53?'Yazı-turadan belirgin şekilde iyi değil; sinyalleri temkinli yorumla.':'Rastgeleden iyi görünüyor.'}</div>`}
+ const f=t.filter(x=>x.Etiket);
+ $('firsat-say').textContent=f.length+' hisse';
+ $('firsatlar').innerHTML=f.length?f.map(x=>`<div class="opp"><div><span class="s">${esc(x.Hisse)}</span> <span class="tag ${x.Etiket==='AL'?'up':'bl'}">${x.Etiket}</span><div class="n">${esc(x.Gerekce)}</div></div>
+   <div style="text-align:right" class="num"><b>${x.Fiyat}</b><div class="${rk(x['15dk%'])}" style="font-size:13px">${sg(x['15dk%'])}% <span class="mut">15 dk</span></div></div>
+   <div class="bar"><i style="width:${Math.min(100,x.Puan)}%"></i></div></div>`).join('')
+  :`<div class="empty">Şu an eşiklere uyan fırsat yok.<br><span style="font-size:12px">En yüksek puanlı aday: ${t[0]?esc(t[0].Hisse)+' ('+t[0].Puan+')':'—'}</span></div>`;
+ $('tum').innerHTML=t.map(x=>`<div class="mini"><b style="width:52px">${esc(x.Hisse)}</b><span class="num mut" style="width:44px;font-size:12px">${tr(x.HacimX,1)}x</span>
+   <div class="pb"><i style="width:${x.Puan}%;background:${x.Etiket==='AL'?'var(--up)':x.Etiket?'var(--blue)':'var(--dim)'}"></i></div><span class="num" style="width:26px;text-align:right;font-size:13px">${x.Puan}</span></div>`).join('');
+ $('bayat').innerHTML=(P.piyasa_acik&&dk>15)?`<div class="warn"><span>⚠️</span><div><b>Veri ${dk} dakikadır güncellenmedi.</b> GitHub zamanlaması gecikmiş olabilir; birkaç dakika içinde düzelmezse Actions sayfasını kontrol et.</div></div>`:'';
+}
+
+/* ------------------------------------------------ HESAP */
+function hesapCiz(){
+ $('h-deger').textContent=usd(P.hesap);
+ const top=P.hesap-(P.baslangic||P.hesap);
+ $('h-gun').innerHTML=`<span class="${rk(P.gunluk_kz)}">${sg(P.gunluk_kz)} $ (${sg(P.gunluk_yuzde)}%) bugün</span> <span class="mut">· başlangıca göre ${sg(top)} $</span>`;
+ $('h-nakit').textContent=usd(P.nakit);$('h-alim').textContent=usd(P.alim_gucu);
+ const g=Object.values(P.gecmis||{}),sv=$('h-grafik');
+ if(g.length>1){const mn=Math.min(...g),mx=Math.max(...g),r=mx-mn||1,pts=g.map((v,i)=>[i/(g.length-1)*300,52-(v-mn)/r*44]);
+  const d=pts.map((p,i)=>(i?'L':'M')+p[0].toFixed(1)+' '+p[1].toFixed(1)).join(' '),c=g[g.length-1]>=g[0]?'#2BD17E':'#FF5C5C';
+  sv.innerHTML=`<path d="${d} L300 60 L0 60Z" fill="${c}" opacity=".12"/><path d="${d}" fill="none" stroke="${c}" stroke-width="2" vector-effect="non-scaling-stroke"/>`;sv.style.display='block'}
+ else{sv.innerHTML=`<text x="150" y="34" text-anchor="middle" font-size="11" fill="#5E6779">Grafik birkaç gün sonra oluşacak</text>`}
+ $('oto-sw').className='sw kilit'+(P.otomatik?' on':'');
+ $('oto-alt').textContent=P.otomatik?'Açık · bot sinyallerde kendisi alım yapıyor':'Kapalı · sinyaller sadece bildiriliyor';
+ $('risk').innerHTML=Object.entries(P.risk||{}).map(([k,v])=>`<div>${esc(k)}<b>${esc(v)}</b></div>`).join('');
+ const pz=P.pozisyonlar||[];$('poz-say').textContent=pz.length+' pozisyon';
+ $('pozlar').innerHTML=pz.length?pz.map(x=>`<div class="row"><div><b>${esc(x.hisse)}</b><div class="lbl num">${tr(x.adet,0)} adet · giriş ${x.giris}</div></div>
+  <div class="num" style="text-align:right">${x.simdi}<div class="${rk(x.kz)}" style="font-size:13px">${sg(x.kz)} $ (${sg(x.kz_yuzde)}%)</div></div></div>`).join(''):'<div class="empty">Açık pozisyon yok</div>';
+ const em=P.acik_emirler||[];$('emir-say').textContent=em.length;
+ $('emirler').innerHTML=em.length?em.map(x=>`<div class="row"><div><span class="tag ${x.yon==='AL'?'up':'dn'}">${x.yon}</span> <b>${esc(x.hisse)}</b><div class="lbl">${x.tur==='limit'?'Kâr al':x.tur==='stop'?'Zarar kes':esc(x.tur)}</div></div>
+  <div class="num" style="text-align:right">${tr(x.adet,0)} × ${x.fiyat||'piyasa'}</div></div>`).join(''):'<div class="empty">Bekleyen emir yok</div>';
+ const is=P.islemler||[];$('isl-say').textContent=is.length+' işlem';
+ const giris={};
+ $('islemler').innerHTML=is.length?is.map(x=>{let ek='';if(x.yon==='AL')giris[x.hisse]=x.fiyat;else if(giris[x.hisse]){const y=(x.fiyat/giris[x.hisse]-1)*100;ek=`<div class="${rk(y)}" style="font-size:12px">${sg(y)}%</div>`}
+  return `<div class="row"><div><span class="tag ${x.yon==='AL'?'up':'dn'}">${x.yon}</span> <b>${esc(x.hisse)}</b><div class="lbl num">${x.zaman} NY · ${tr(x.adet,0)} adet</div></div><div class="num" style="text-align:right">${x.fiyat}${ek}</div></div>`}).reverse().join(''):'<div class="empty">Bugün işlem yok</div>';
+ $('kayit').textContent=(P.kayit||[]).join('\n');$('kayit-z').textContent=ist(P.guncelleme)+' ▸';
+}
+
+/* ------------------------------------------------ ANALİZ */
+function grupla(h,tf){ // 5 dk mumlarını 15/30/60 dk'ya birleştir
+ const out={t:[],o:[],h:[],l:[],c:[],v:[],gun:[]};let key=null;
+ for(let i=0;i<h.t.length;i++){const [g,s]=h.t[i].split(' '),[hh,mm]=s.split(':').map(Number),dk=(hh*60+mm-570),k=g+'|'+Math.floor(dk/tf);
+  if(k!==key){key=k;out.t.push(h.t[i]);out.o.push(h.o[i]);out.h.push(h.h[i]);out.l.push(h.l[i]);out.c.push(h.c[i]);out.v.push(h.v[i]);out.gun.push(g)}
+  else{const j=out.t.length-1;out.h[j]=Math.max(out.h[j],h.h[i]);out.l[j]=Math.min(out.l[j],h.l[i]);out.c[j]=h.c[i];out.v[j]+=h.v[i]}}
+ return out}
+const emaH=(a,n)=>{const k=2/(n+1);let e=a[0];return a.map(x=>e=x*k+e*(1-k))};
+
+function analizEt(){
+ if(!A)return;
+ const s=$('sembol').value.trim().toUpperCase();$('sembol').value=s;
+ document.querySelectorAll('#sembol-sec span').forEach(x=>x.classList.toggle('on',x.textContent===s));
+ const h=A.hisseler[s];
+ if(!h){$('analiz-govde').style.display='none';$('analiz-alt').style.display='none';$('analiz-hata').style.display='block';
+  $('analiz-hata').innerHTML=`<b>${esc(s)}</b> izleme listesinde yok.<br><span style="font-size:12px">Listedeki hisselerden birini seç. Yeni hisse eklemek için botun hisse listesini güncellemek gerekir.</span>`;return}
+ $('analiz-govde').style.display='';$('analiz-alt').style.display='';$('analiz-hata').style.display='none';
+ try{localStorage.setItem('sembol',s)}catch(e){}
+ const d=TF===5?{...h,gun:h.t.map(x=>x.split(' ')[0])}:grupla(h,TF);
+ const N=d.c.length,KM=Math.max(1,Math.round(30/TF));
+ const e9=emaH(d.c,9),e21=emaH(d.c,21),e50=emaH(d.c,50);
+ // RSI 14 (Wilder)
+ const rsi=[50];let ag=0,al=0;for(let i=1;i<N;i++){const x=d.c[i]-d.c[i-1];ag=(ag*13+Math.max(x,0))/14;al=(al*13+Math.max(-x,0))/14;rsi.push(al?100-100/(1+ag/al):100)}
+ // VWAP (her gün sıfırlanır)
+ let pv=0,vv=0,gg=null;const vwap=d.c.map((c,i)=>{if(d.gun[i]!==gg){gg=d.gun[i];pv=0;vv=0}const tp=(d.h[i]+d.l[i]+c)/3;pv+=tp*d.v[i];vv+=d.v[i];return pv/vv});
+ // sinyaller (bot.py ema_sinyalleri ile aynı kural)
+ const sin=[];
+ for(let i=1;i<N;i++){if(e9[i-1]<=e21[i-1]&&e9[i]>e21[i]&&d.c[i]>e50[i])sin.push({i,tip:'AL'});else if(e9[i-1]>=e21[i-1]&&e9[i]<e21[i])sin.push({i,tip:'SAT'})}
+ sin.forEach(x=>{const j=x.i+KM;if(j<N&&d.gun[j]===d.gun[x.i]){const g=(d.c[j]/d.c[x.i]-1)*100;x.deg=g;x.dogru=x.tip==='AL'?g>0:g<0}else if(j<N)x.gece=true});
+ // görünür pencere: son 80 mum (EMA'lar öncesinden ısınmış olur)
+ const B=Math.max(0,N-80),V=N-B,W=340/V,H=240;
+ const lo=Math.min(...d.l.slice(B)),hi=Math.max(...d.h.slice(B)),pad=(hi-lo)*.12||1,mn=lo-pad,mx=hi+pad,Y=q=>H-10-(q-mn)/(mx-mn)*(H-20),X=i=>(i-B)*W+W/2;
+ let g='';for(let i=0;i<5;i++)g+=`<line x1="0" x2="340" y1="${10+i*55}" y2="${10+i*55}" stroke="#1C2330"/>`;
+ for(let i=B+1;i<N;i++)if(d.gun[i]!==d.gun[i-1])g+=`<line x1="${X(i)-W/2}" x2="${X(i)-W/2}" y1="0" y2="${H}" stroke="#2A3242" stroke-dasharray="2 3"/><text x="${X(i)-W/2+3}" y="10" font-size="8" fill="#5E6779">${d.gun[i]}</text>`;
+ const yol=a=>a.slice(B).map((q,k)=>(k?'L':'M')+X(k+B).toFixed(1)+' '+Y(q).toFixed(1)).join(' ');
+ g+=`<path d="${yol(vwap)}" fill="none" stroke="#8A94A8" stroke-width="1" stroke-dasharray="3 3"/>`;
+ for(let i=B;i<N;i++){const up=d.c[i]>=d.o[i],col=up?'#2BD17E':'#FF5C5C',x=X(i);g+=`<line x1="${x}" x2="${x}" y1="${Y(d.h[i])}" y2="${Y(d.l[i])}" stroke="${col}" stroke-width=".8"/><rect x="${x-W*.33}" y="${Y(Math.max(d.o[i],d.c[i]))}" width="${W*.66}" height="${Math.max(1,Math.abs(Y(d.o[i])-Y(d.c[i])))}" fill="${col}"/>`}
+ [[e9,'#5B9BFF'],[e21,'#E9B949'],[e50,'#B488FF']].forEach(([a,c])=>g+=`<path d="${yol(a)}" fill="none" stroke="${c}" stroke-width="1.5"/>`);
+ sin.filter(x=>x.i>=B).forEach(x=>{const cx=X(x.i),A2=x.tip==='AL',col=A2?'#2BD17E':'#FF5C5C',y=A2?Y(d.l[x.i])+9:Y(d.h[x.i])-9;
+  g+=A2?`<path d="M${cx} ${y-5} l5 8 h-10z" fill="${col}"/>`:`<path d="M${cx} ${y+5} l5 -8 h-10z" fill="${col}"/>`;
+  const lab=x.dogru===undefined?(x.gece?'–':'…'):x.dogru?'✓':'✗';g+=`<text x="${cx}" y="${A2?y+16:y-9}" font-size="9" text-anchor="middle" font-weight="700" fill="${x.dogru===undefined?'#8A94A8':x.dogru?'#2BD17E':'#FF5C5C'}">${lab}</text>`});
+ $('chart').innerHTML=g;$('chart-alt').textContent=`${d.t[B]} → ${d.t[N-1]} (NY) · ${TF} dk mum`;
+ // fiyat başlığı
+ const son=d.c[N-1],gunler=[...new Set(d.gun)],dun=d.c[d.gun.lastIndexOf(gunler[gunler.length-2])]||d.o[0],df=son-dun;
+ $('a-ad').textContent=s+' · son mum '+d.t[N-1].split(' ')[1]+' NY';$('fiyat').textContent=son.toFixed(2);
+ $('fdeg').className='num '+rk(df);$('fdeg').textContent=`${sg(df)} (${sg(df/dun*100)}%)`;
+ // doğruluk
+ const bit=sin.filter(x=>x.dogru!==undefined),dg=bit.filter(x=>x.dogru).length;
+ $('kontrol-acik').textContent=`${KM*TF} dk sonra kontrol`;
+ $('d-grafik').textContent=bit.length?`%${Math.round(dg/bit.length*100)}`:'—';$('d-grafik2').textContent=`${bit.length} sinyalden ${dg}'i doğru`;
+ const uz=P&&P.dogruluk,uh=uz&&uz.hisse&&uz.hisse[s];
+ if(uh&&uh.isabet!=null&&TF===5){$('d-uzun').textContent='%'+tr(uh.isabet,0);$('d-uzun2').textContent=`${tr(uh.adet,0)} sinyal · tüm liste %${tr(uz.ema.isabet,0)}`;$('d-uzun').className='num '+(uh.isabet>=53?'up':uh.isabet<47?'dn':'')}
+ else{$('d-uzun').textContent='—';$('d-uzun').className='num';$('d-uzun2').textContent=TF!==5?'Sadece 5 dk için test edilir':'Kapanıştan sonra hesaplanacak'}
+ $('d-liste').innerHTML=sin.slice(-6).reverse().map(x=>`<div class="row"><div><span class="tag ${x.tip==='AL'?'up':'dn'}">${x.tip}</span> <span class="num">${d.t[x.i]} · ${d.c[x.i].toFixed(2)}</span></div>
+  <div class="num" style="text-align:right">${x.dogru===undefined?`<span class="mut">${x.gece?'gün bitti':'bekleniyor'}</span>`:`<span class="${rk(x.deg)}">${sg(x.deg)}%</span> ${x.dogru?'<span class="up">✓</span>':'<span class="dn">✗</span>'}`}</div></div>`).join('')||'<div class="empty">Bu grafikte sinyal yok</div>';
+ // puan ve göstergeler
+ const L=N-1,rs=rsi[L],vw=vwap[L],gh=d.v.slice(-3).reduce((a,b)=>a+b,0)/3/(d.v.slice(-23,-3).reduce((a,b)=>a+b,0)/20||1);
+ const yukari=e9[L]>e21[L]&&e21[L]>e50[L],asagi=e9[L]<e21[L]&&e21[L]<e50[L];
+ const kosul=[son>e50[L],yukari,son>vw,rs>50&&rs<70,gh>1.2],ok=kosul.filter(Boolean).length,puan=Math.round(ok/5*100);
+ const ss=sin[sin.length-1];
+ $('puan').textContent=puan;
+ const renk=puan>=60?'#2BD17E':puan<=40?'#FF5C5C':'#E9B949';
+ $('score').style.background=`conic-gradient(${renk} 0 ${puan}%,var(--s2) ${puan}% 100%)`;
+ $('verdict').style.background=puan>=60?'var(--upbg)':puan<=40?'var(--dnbg)':'rgba(233,185,73,.08)';
+ $('verdict').style.borderColor=puan>=60?'rgba(43,209,126,.3)':puan<=40?'rgba(255,92,92,.3)':'rgba(233,185,73,.3)';
+ $('v-baslik').textContent=puan>=60?'Güçlü yükseliş momentumu':puan<=40?'Zayıf / düşüş eğilimi':'Kararsız';$('v-baslik').style.color=renk;
+ $('v-alt').textContent=`5 koşuldan ${ok}'i olumlu · son sinyal: ${ss?ss.tip+' ('+d.t[ss.i].split(' ')[1]+')':'yok'}`;
+ const vf=(son/vw-1)*100;
+ $('ind').innerHTML=[
+  ['RSI (14)',tr(rs,1),rs>70?['dn','Aşırı alım']:rs<30?['up','Aşırı satım']:rs>50?['up','Güçlü']:['gy','Zayıf']],
+  ['VWAP',vw.toFixed(2),son>vw?['up',`Fiyat %${tr(vf,1)} üstünde`]:['dn',`Fiyat %${tr(-vf,1)} altında`]],
+  ['Göreli hacim',tr(gh,1)+'x',gh>1.5?['up','Yüksek']:gh<.7?['gy','Düşük']:['gy','Normal']],
+  ['Trend',yukari?'Yukarı':asagi?'Aşağı':'Yatay',e9[L]>e21[L]?['up','EMA 9 > 21']:['dn','EMA 9 < 21']]
+ ].map(([a,b,[c,t]])=>`<div class="stat"><span class="lbl">${a}</span><b class="num">${b}</b><span class="tag ${c}">${t}</span></div>`).join('');
+ // yorum
+ const y=[];
+ y.push(`<b>Trend:</b> ${s} ${TF} dakikalık grafikte ${yukari?'yükseliş trendinde. Fiyat üç ortalamanın da üzerinde ve ortalamalar yukarı sıralı (EMA 9 > 21 > 50).':asagi?'düşüş trendinde. Ortalamalar aşağı sıralı (EMA 9 < 21 < 50); yükseliş denemeleri şimdilik satışla karşılanıyor.':'net bir trend göstermiyor; ortalamalar iç içe, piyasa yön arıyor.'}`);
+ y.push(`<b>Momentum:</b> RSI ${tr(rs,0)} ile ${rs>70?'aşırı alım bölgesinde; kısa vadede geri çekilme ihtimali artıyor.':rs<30?'aşırı satım bölgesinde; tepki yükselişi gelebilir ama trend hâlâ zayıf.':rs>50?'alıcılardan yana, aşırı alıma girmemiş.':'satıcılardan yana.'} Son 15 dakikada hacim normalin ${tr(gh,1)} katı${gh>1.5?'; hareket hacimle destekleniyor.':'.'}`);
+ y.push(`<b>Konum:</b> Fiyat günün ortalama maliyetinin (VWAP) %${tr(Math.abs(vf),1)} ${son>vw?'üzerinde; gün içinde alıcılar kârda.':'altında; gün içinde alıcılar zararda.'}${Math.abs(vf)>2?' VWAP\'tan bu kadar uzaklaşma, ortalamaya geri dönüş riskini artırır.':''}`);
+ if(ss)y.push(`<b>Son sinyal:</b> ${d.t[ss.i]}'de ${d.c[ss.i].toFixed(2)} seviyesinden ${ss.tip}. ${ss.dogru===undefined?(ss.gece?'Gün kapandığı için sonuç ölçülemedi.':`O zamandan beri ${sg((son/d.c[ss.i]-1)*100)}%; ${KM*TF} dakika dolunca değerlendirilecek.`):ss.dogru?`${KM*TF} dakika içinde doğru çıktı (${sg(ss.deg)}%).`:`${KM*TF} dakika içinde tutmadı (${sg(ss.deg)}%).`}`);
+ const uzMetin=uh&&uh.isabet!=null?`Son 1 yılda bu hissede ${tr(uh.adet,0)} sinyalin %${tr(uh.isabet,0)}'i tuttu. ${uh.isabet>=55?'Bu, rastgeleden anlamlı şekilde iyi.':uh.isabet>=50?'Bu, yazı-turaya çok yakın; sinyal tek başına güvenilir değil.':'Bu, yazı-turadan bile kötü; bu hissede sinyalin tersi daha sık gerçekleşmiş.'}`:'Uzun dönem testi her gün kapanıştan sonra güncellenir.';
+ y.push(`<b>Güvenilirlik:</b> Bu grafikte ${bit.length} sinyalden ${dg}'i tuttu${bit.length<10?' (istatistik için az)':''}. ${uzMetin}`);
+ $('yorum').innerHTML=y.map(x=>`<p style="margin-bottom:8px">${x}</p>`).join('');
+}
+
+/* ------------------------------------------------ YÜKLEME */
+async function yukle(elle){
+ try{
+  const [p,a]=await Promise.all([fetch('panel.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.json()),
+   fetch('analiz.json?t='+Date.now(),{cache:'no-store'}).then(r=>r.ok?r.json():null).catch(()=>null)]);
+  P=p;A=a;
+  radarCiz();hesapCiz();
+  if(A){const liste=Object.keys(A.hisseler);$('sembol-sec').innerHTML=liste.map(x=>`<span>${x}</span>`).join('');
+   document.querySelectorAll('#sembol-sec span').forEach(x=>x.onclick=()=>{$('sembol').value=x.textContent;analizEt()});analizEt()}
+  if(elle&&tg&&tg.HapticFeedback)tg.HapticFeedback.notificationOccurred('success');
+ }catch(e){$('pill-t').textContent='Veri yok';$('firsatlar').innerHTML='<div class="empty">Henüz veri yok. Bot ilk kez çalıştığında burada görünecek.</div>'}
+}
+try{const s=localStorage.getItem('sembol');if(s)$('sembol').value=s}catch(e){}
+let ilk='radar';try{ilk=location.hash.slice(1)||localStorage.getItem('sekme')||'radar'}catch(e){}
+show(['radar','manuel','hesap'].includes(ilk)?ilk:'radar');
+yukle();setInterval(yukle,60000);
+</script></body></html>
