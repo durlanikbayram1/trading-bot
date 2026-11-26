@@ -1,2 +1,4 @@
 alpaca-py
 pandas
+numpy
+requests
