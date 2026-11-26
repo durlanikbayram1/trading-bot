@@ -359,6 +359,11 @@ def panel_yaz(trading, durum):
     simdi = pd.Timestamp.now(tz=NY)
     hesap, saat = trading.get_account(), trading.get_clock()
     deger, dunku = float(hesap.equity), float(hesap.last_equity)
+    hesap_no = str(getattr(hesap, "account_number", "") or "")
+    if hesap_no and durum.get("hesap_no") != hesap_no:      # yeni hesaba geçildi: istatistikleri sıfırla
+        for k in ("baslangic", "gecmis", "mfe"):
+            durum.pop(k, None)
+        durum["hesap_no"] = hesap_no
     durum.setdefault("baslangic", round(deger, 2))
     gecmis = durum.get("gecmis", {})
     gecmis[simdi.strftime("%Y-%m-%d")] = round(deger, 2)
