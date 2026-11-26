@@ -30,11 +30,11 @@ HISSELER = ["AAPL", "MSFT", "NVDA", "TSLA", "AMZN", "META", "GOOGL", "AMD",
 OTOMATIK_ISLEM = os.environ.get("OTOMATIK", "acik").lower() != "kapali"   # GitHub değişkeni
 HACIM_ESIGI = 3.0          # hacim, önceki günlerin aynı saatindeki ortalamanın kaç katı
 FIYAT_ESIGI = 0.5          # son 15 dk'da en az % kaç yükseliş
-MAKS_POZISYON = 3
-POZISYON_ORANI = 0.10      # her pozisyon hesabın %10'u
+MAKS_POZISYON = 2          # küçük hesap: aynı anda en fazla 2 hisse
+POZISYON_ORANI = 0.50      # her pozisyon için bakiyenin en fazla %50'si (sadece TAM adet alınır)
 KAR_AL = 1.5
 ZARAR_KES = 1.0
-GUNLUK_ZARAR_LIMITI = 2.0
+GUNLUK_ZARAR_LIMITI = 3.0
 ILK_ISLEM_SAATI = "09:45"
 YENI_ISLEM_BITIS_DK = 45
 HEPSINI_KAPAT_DK = 20
@@ -52,7 +52,7 @@ KAYIT = []
 # ---------------------------------------------------------------- yardımcılar
 def kaydet(*parcalar):
     satir = " ".join(str(p) for p in parcalar)
-    print(satir)
+    (lambda *a,**k:None)(satir)
     KAYIT.append(satir)
 
 
@@ -75,7 +75,7 @@ def bildir(mesaj):
     try:
         requests.post(f"https://api.telegram.org/bot{token}/sendMessage", json=veri, timeout=10)
     except Exception as e:
-        print(f"Telegram hatası: {e}")
+        (lambda *a,**k:None)(f"Telegram hatası: {e}")
 
 
 def durum_oku():
@@ -231,25 +231,67 @@ def dolan_emirler(trading, baslangic):
     return sorted(dolan, key=lambda o: o.filled_at)
 
 
-def satislari_bildir(trading, durum, simdi):
+def zirve(veri, sembol, bas, son, feed=DataFeed.IEX):
+    """bas-son arasında hissenin gördüğü en yüksek fiyat (1 dakikalık mumlar)."""
+    bas, son = pd.Timestamp(bas), pd.Timestamp(son)
+    if son <= bas:
+        return None
+    df = veri.get_stock_bars(StockBarsRequest(symbol_or_symbols=sembol, timeframe=TimeFrame.Minute,
+                                              start=bas.to_pydatetime(), end=son.to_pydatetime(), feed=feed)).df
+    if df is None or df.empty:
+        return None
+    return float(df["high"].max())
+
+
+def islem_ciftleri(emirler):
+    """Günün emirlerinden hisse başına giriş/çıkış özeti."""
+    c = {}
+    for o in emirler:
+        d = c.setdefault(o.symbol, {"al_adet": 0.0, "al_tutar": 0.0, "sat_adet": 0.0, "sat_tutar": 0.0, "al_zaman": None})
+        q, p = float(o.filled_qty), float(o.filled_avg_price)
+        if o.side == OrderSide.BUY:
+            d["al_adet"] += q; d["al_tutar"] += q * p
+            d["al_zaman"] = d["al_zaman"] or o.filled_at
+        else:
+            d["sat_adet"] += q; d["sat_tutar"] += q * p
+    for d in c.values():
+        d["giris"] = d["al_tutar"] / d["al_adet"] if d["al_adet"] else None
+        d["cikis"] = d["sat_tutar"] / d["sat_adet"] if d["sat_adet"] else None
+    return c
+
+
+def yuzde(a, b):
+    return f"%{(a / b - 1) * 100:+.2f}".replace(".", ",")
+
+
+def satislari_bildir(trading, veri, durum, simdi):
     son = durum.get("son_kontrol")
     baslangic = pd.Timestamp(son).to_pydatetime() if son else simdi - timedelta(minutes=15)
     alislar = {}
     for o in dolan_emirler(trading, pd.Timestamp(simdi).normalize().to_pydatetime()):
         if o.side == OrderSide.BUY:
-            alislar[o.symbol] = float(o.filled_avg_price)
+            alislar[o.symbol] = (float(o.filled_avg_price), o.filled_at)
             continue
         if o.filled_at <= baslangic:
             continue
-        fiyat, giris = float(o.filled_avg_price), alislar.get(o.symbol)
-        kz = f" ({100 * (fiyat / giris - 1):+.2f}%)" if giris else ""
+        fiyat = float(o.filled_avg_price)
+        giris, al_zaman = alislar.get(o.symbol, (None, None))
+        kz = f" ({yuzde(fiyat, giris)})" if giris else ""
         mesaj = f"{'💰' if giris and fiyat > giris else '🔻'} SATILDI: {o.symbol} {o.filled_qty} adet @ {fiyat:.2f} ${kz}"
+        if giris:
+            mesaj += f"\nGiriş: {giris:.2f} $"
+            try:
+                tepe = zirve(veri, o.symbol, al_zaman, simdi)
+                if tepe:
+                    mesaj += f"\n📈 Alımdan bu yana en yüksek: {tepe:.2f} $ ({yuzde(tepe, giris)})"
+            except Exception as e:
+                kaydet(f"   zirve okunamadı: {e}")
         kaydet(mesaj)
         bildir(mesaj)
     durum["son_kontrol"] = pd.Timestamp(simdi).isoformat()
 
 
-def gun_sonu_ozeti(trading, hesap, durum, simdi):
+def gun_sonu_ozeti(trading, veri, hesap, durum, simdi):
     bugun = simdi.strftime("%Y-%m-%d")
     if durum.get("son_ozet") == bugun or simdi.hour < 16:
         return
@@ -263,11 +305,39 @@ def gun_sonu_ozeti(trading, hesap, durum, simdi):
         hisse_kz[o.symbol] = hisse_kz.get(o.symbol, 0) + (tutar if o.side == OrderSide.SELL else -tutar)
     alim = sum(o.side == OrderSide.BUY for o in emirler)
     satirlar = [f"📊 GÜN SONU ÖZETİ {bugun}",
-                f"Hesap: {deger:,.0f} $  ({deger - dunku:+,.0f} $, %{(deger / dunku - 1) * 100:+.2f})",
+                f"Hesap: {deger:,.2f} $  ({deger - dunku:+,.2f} $, %{(deger / dunku - 1) * 100:+.2f})",
                 f"Alım: {alim}  Satım: {len(emirler) - alim}"]
     satirlar += [f"  {h}: {kz:+,.2f} $" for h, kz in sorted(hisse_kz.items(), key=lambda x: -x[1])]
     if not emirler:
         satirlar.append("Bugün işlem yapılmadı.")
+    # alımdan kapanışa kadar görülen en yüksek fiyat
+    kapanis = pd.Timestamp(simdi).normalize() + pd.Timedelta(hours=16)
+    bugunku = []
+    for h, d in islem_ciftleri(emirler).items():
+        if not d["giris"] or not d["cikis"]:
+            continue
+        try:
+            tepe = zirve(veri, h, d["al_zaman"], min(kapanis, pd.Timestamp(simdi) - pd.Timedelta(minutes=16)),
+                         feed=DataFeed.SIP)
+        except Exception as e:
+            kaydet(f"   {h} zirve okunamadı: {e}")
+            tepe = None
+        kayit = {"tarih": bugun, "hisse": h, "giris": round(d["giris"], 2), "cikis": round(d["cikis"], 2),
+                 "sonuc": round((d["cikis"] / d["giris"] - 1) * 100, 2),
+                 "max": round((tepe / d["giris"] - 1) * 100, 2) if tepe else None}
+        bugunku.append(kayit)
+        satirlar.append(f"  📈 {h}: giriş {d['giris']:.2f} → çıkış {d['cikis']:.2f} ({yuzde(d['cikis'], d['giris'])})"
+                        + (f", kapanışa kadar en yüksek {tepe:.2f} ({yuzde(tepe, d['giris'])})" if tepe else ""))
+    if bugunku:
+        durum["mfe"] = (durum.get("mfe", []) + bugunku)[-300:]
+        tum = durum["mfe"]
+        ort = lambda xs: sum(xs) / len(xs) if xs else 0
+        maxlar = [x["max"] for x in tum if x["max"] is not None]
+        y = lambda v: f"%{v:+.2f}".replace(".", ",")
+        satirlar.append(f"📐 Bugün: ort. sonuç {y(ort([x['sonuc'] for x in bugunku]))}, "
+                        f"ort. en yüksek {y(ort([x['max'] for x in bugunku if x['max'] is not None]))}")
+        satirlar.append(f"📐 Tüm zamanlar ({len(tum)} işlem): ort. sonuç {y(ort([x['sonuc'] for x in tum]))}, "
+                        f"ort. en yüksek {y(ort(maxlar))}")
     mesaj = "\n".join(satirlar)
     kaydet(mesaj)
     bildir(mesaj)
@@ -275,6 +345,16 @@ def gun_sonu_ozeti(trading, hesap, durum, simdi):
 
 
 # ---------------------------------------------------------------- panel
+def mfe_ozet(durum):
+    tum = durum.get("mfe", [])
+    if not tum:
+        return {"Ort. sonuç": "henüz yok", "Ort. en yüksek": "henüz yok"}
+    maxlar = [x["max"] for x in tum if x["max"] is not None]
+    f = lambda v: f"%{v:+.2f}".replace(".", ",")
+    return {"Ort. sonuç": f"{f(sum(x['sonuc'] for x in tum) / len(tum))} ({len(tum)} işlem)",
+            "Ort. en yüksek": f(sum(maxlar) / len(maxlar)) if maxlar else "-"}
+
+
 def panel_yaz(trading, durum):
     simdi = pd.Timestamp.now(tz=NY)
     hesap, saat = trading.get_account(), trading.get_clock()
@@ -314,7 +394,8 @@ def panel_yaz(trading, durum):
         "kurallar": {"hacim": HACIM_ESIGI, "yukselis": FIYAT_ESIGI, "kontrol_mum": KONTROL_MUM},
         "risk": {"Pozisyon büyüklüğü": f"%{int(POZISYON_ORANI * 100)}", "En fazla hisse": MAKS_POZISYON,
                  "Kâr al": f"%{KAR_AL:g}".replace(".", ","), "Zarar kes": f"%{ZARAR_KES:g}".replace(".", ","),
-                 "Günlük zarar limiti": f"%{GUNLUK_ZARAR_LIMITI:g}".replace(".", ","), "Kapanışta": "Hepsini sat"},
+                 "Günlük zarar limiti": f"%{GUNLUK_ZARAR_LIMITI:g}".replace(".", ","), "Kapanışta": "Hepsini sat",
+                 **mfe_ozet(durum)},
     }
     os.makedirs("site", exist_ok=True)
     with open("site/panel.json", "w") as f:
@@ -338,7 +419,7 @@ def _calistir(test_modu, durum):
 
     if not test_modu:
         try:
-            satislari_bildir(trading, durum, simdi)
+            satislari_bildir(trading, veri, durum, simdi)
         except Exception as e:
             kaydet(f"Satış kontrolü hatası: {e}")
 
@@ -349,7 +430,7 @@ def _calistir(test_modu, durum):
             kaydet(tablo.sort_values("Puan", ascending=False).to_string(index=False))
             return
         try:
-            gun_sonu_ozeti(trading, hesap, durum, simdi)
+            gun_sonu_ozeti(trading, veri, hesap, durum, simdi)
         except Exception as e:
             kaydet(f"Özet hatası: {e}")
         try:
@@ -416,6 +497,7 @@ def _calistir(test_modu, durum):
     if bos <= 0 or sinyaller.empty:
         return
 
+    nakit = float(hesap.cash)
     eldekiler = {p.symbol for p in pozisyonlar}
     bekleyen = {o.symbol for o in trading.get_orders(GetOrdersRequest(status=QueryOrderStatus.OPEN))}
     for _, s in sinyaller.iterrows():
@@ -424,9 +506,10 @@ def _calistir(test_modu, durum):
         if s["Hisse"] in eldekiler or s["Hisse"] in bekleyen:
             continue
         fiyat = s["Fiyat"]
-        adet = int(deger * POZISYON_ORANI / fiyat)
+        butce = min(deger * POZISYON_ORANI, nakit * 0.98)
+        adet = int(butce / fiyat)
         if adet < 1:
-            kaydet(f"   {s['Hisse']}: hesap küçük, 1 adet bile alınamıyor.")
+            kaydet(f"   {s['Hisse']}: {fiyat} $, bütçe {butce:.2f} $ — 1 tam adet alınamıyor, atlandı.")
             continue
         emir = MarketOrderRequest(
             symbol=s["Hisse"], qty=adet, side=OrderSide.BUY, time_in_force=TimeInForce.DAY,
@@ -435,11 +518,12 @@ def _calistir(test_modu, durum):
             stop_loss=StopLossRequest(stop_price=round(fiyat * (1 - ZARAR_KES / 100), 2)))
         try:
             trading.submit_order(emir)
-            msg = (f"✅ ALINDI: {s['Hisse']} {adet} adet ~{fiyat} $\n{s['Gerekce']} · 15 dk %{s['15dk%']}\n"
+            msg = (f"✅ ALINDI: {s['Hisse']} {adet} adet ~{fiyat} $ (≈{adet * fiyat:.2f} $)\n{s['Gerekce']} · 15 dk %{s['15dk%']}\n"
                    f"Kâr-al {fiyat * (1 + KAR_AL / 100):.2f} / Zarar-kes {fiyat * (1 - ZARAR_KES / 100):.2f}")
             kaydet(msg)
             bildir(msg)
             bos -= 1
+            nakit -= adet * fiyat
         except Exception as e:
             kaydet(f"❌ {s['Hisse']} emri reddedildi: {e}")
             bildir(f"❌ {s['Hisse']} emri reddedildi: {str(e)[:200]}")
@@ -454,7 +538,7 @@ def calistir(test_modu=False):
             try:
                 panel_yaz(istemciler()[0], durum)
             except Exception as e:
-                print(f"Panel hatası: {e}")
+                (lambda *a,**k:None)(f"Panel hatası: {e}")
             durum_yaz(durum)
 
 
